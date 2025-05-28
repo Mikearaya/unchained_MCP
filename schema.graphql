@@ -1,0 +1,2698 @@
+directive @cacheControl(maxAge: Int, scope: CacheControlScope) on FIELD_DEFINITION | OBJECT
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
+"""
+scalar DateTimeISO
+
+"""
+A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
+"""
+scalar Date
+
+"""
+The javascript `Date` as integer. Type represents date and time as number of milliseconds from start of UNIX epoch.
+"""
+scalar Timestamp
+
+"""Lowercased string"""
+scalar LowerCaseString
+
+"""The locale in the format of a BCP 47 (RFC 5646) standard string"""
+scalar Locale
+
+enum CacheControlScope {
+  PUBLIC
+  PRIVATE
+}
+
+type Address {
+  firstName: String
+  lastName: String
+  company: String
+  addressLine: String
+  addressLine2: String
+  postalCode: String
+  countryCode: String
+  regionCode: String
+  city: String
+}
+
+type AssortmentMediaTexts {
+  _id: ID!
+  locale: Locale!
+  title: String
+  subtitle: String
+}
+
+type AssortmentMedia {
+  _id: ID!
+  tags: [LowerCaseString!]
+  file: Media
+  sortKey: Int!
+  texts(forceLocale: Locale): AssortmentMediaTexts
+}
+
+"""Assortment"""
+type Assortment {
+  _id: ID!
+  created: DateTimeISO
+  updated: DateTimeISO
+  deleted: DateTimeISO
+  isActive: Boolean
+  isBase: Boolean
+  isRoot: Boolean
+  sequence: Int!
+  tags: [LowerCaseString!]
+  media(limit: Int = 10, offset: Int = 0, tags: [LowerCaseString!]): [AssortmentMedia!]!
+  texts(forceLocale: Locale): AssortmentTexts
+  productAssignments: [AssortmentProduct!]
+  filterAssignments: [AssortmentFilter!]
+  linkedAssortments: [AssortmentLink!]
+  assortmentPaths: [AssortmentPath!]!
+  children(includeInactive: Boolean = false): [Assortment!]
+  childrenCount(includeInactive: Boolean = false): Int!
+  searchProducts(queryString: String, filterQuery: [FilterQueryInput!], includeInactive: Boolean = false, ignoreChildAssortments: Boolean = false, orderBy: SearchOrderBy): ProductSearchResult!
+}
+
+"""Directed assortment to product paths (breadcrumbs)"""
+type AssortmentPath {
+  links: [AssortmentPathLink!]!
+}
+
+"""
+A connection that represents an uplink from assortment to assortment,
+assortmentId and assortmentTexts are there for convenience
+to short-circuit breadcrumb lookups
+"""
+type AssortmentPathLink {
+  assortmentId: ID!
+  assortmentTexts(forceLocale: Locale): AssortmentTexts!
+  link: AssortmentLink
+}
+
+type AssortmentProduct {
+  _id: ID!
+  sortKey: Int!
+  tags: [LowerCaseString!]
+  assortment: Assortment!
+  product: Product!
+}
+
+type AssortmentFilter {
+  _id: ID!
+  sortKey: Int!
+  tags: [LowerCaseString!]
+  assortment: Assortment!
+  filter: Filter!
+}
+
+type AssortmentLink {
+  _id: ID!
+  sortKey: Int!
+  tags: [LowerCaseString!]
+  parent: Assortment!
+  child: Assortment!
+}
+
+type AssortmentTexts {
+  _id: ID!
+  locale: Locale!
+  slug: String
+  title: String
+  subtitle: String
+  description: String
+}
+
+type Color {
+  name: String
+  hex: String
+  red: Int
+  green: Int
+  blue: Int
+}
+
+type Contact {
+  telNumber: String
+  emailAddress: String
+}
+
+type Country {
+  _id: ID!
+
+  """
+  ISO 3166-1 alpha-2 https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#Officially_assigned_code_elements
+  """
+  isoCode: String
+  isActive: Boolean
+  isBase: Boolean
+  defaultCurrency: Currency
+  flagEmoji: String
+  name(forceLocale: Locale): String
+}
+
+type Currency {
+  _id: ID!
+  isoCode: String!
+  isActive: Boolean
+  contractAddress: String
+  decimals: Int
+}
+
+type DeliveryInterface {
+  _id: ID!
+  label: String
+  version: String
+}
+
+enum DeliveryProviderType {
+  """Pick-Up"""
+  PICKUP
+
+  """Shipping"""
+  SHIPPING
+}
+
+enum DeliveryProviderError {
+  ADAPTER_NOT_FOUND
+  NOT_IMPLEMENTED
+  INCOMPLETE_CONFIGURATION
+  WRONG_CREDENTIALS
+}
+
+type DeliveryProvider {
+  _id: ID!
+  created: DateTimeISO
+  updated: DateTimeISO
+  deleted: DateTimeISO
+  type: DeliveryProviderType
+  interface: DeliveryInterface
+  configuration: JSON
+  configurationError: DeliveryProviderError
+  isActive: Boolean
+  simulatedPrice(currencyCode: String, useNetPrice: Boolean = false, orderId: ID, context: JSON): Price
+}
+
+enum MassUnit {
+  KILOGRAM
+  GRAM
+  POUNDS
+}
+
+enum LengthUnit {
+  METERS
+  FEET
+  MILLIMETERS
+}
+
+type Dimensions {
+  weight(unit: MassUnit = KILOGRAM): Float
+  length(unit: LengthUnit = METERS): Float
+  width(unit: LengthUnit = METERS): Float
+  height(unit: LengthUnit = METERS): Float
+}
+
+type DiscountInterface {
+  _id: ID!
+  label: String
+  version: String
+  isManualAdditionAllowed: Boolean
+  isManualRemovalAllowed: Boolean
+}
+
+type Dispatch {
+  deliveryProvider: DeliveryProvider
+  warehousingProvider: WarehousingProvider
+  shipping: DateTimeISO
+  earliestDelivery: DateTimeISO
+}
+
+enum FilterType {
+  """Switch / Boolean"""
+  SWITCH
+
+  """Single-choice"""
+  SINGLE_CHOICE
+
+  """Multi-choice"""
+  MULTI_CHOICE
+
+  """Range"""
+  RANGE
+}
+
+type FilterTexts {
+  _id: ID!
+  locale: Locale!
+  title: String
+  subtitle: String
+}
+
+type FilterOption {
+  _id: ID!
+  texts(forceLocale: Locale): FilterTexts
+  value: String
+}
+
+type Filter {
+  _id: ID!
+  updated: DateTimeISO
+  created: DateTimeISO
+  isActive: Boolean
+  texts(forceLocale: Locale): FilterTexts
+  type: FilterType
+  key: String
+  options: [FilterOption!]
+}
+
+type LoadedFilterOption {
+  filteredProductsCount: Int!
+  definition: FilterOption!
+  isSelected: Boolean
+}
+
+type LoadedFilter {
+  productsCount: Int!
+  filteredProductsCount: Int!
+  definition: Filter!
+  isSelected: Boolean
+  options: [LoadedFilterOption!]
+}
+
+type Language {
+  _id: ID!
+
+  """
+  ISO 639-1 alpha-2 https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
+  """
+  isoCode: String
+  isActive: Boolean
+  isBase: Boolean
+  name: String
+}
+
+type Media {
+  _id: ID!
+  name: String!
+  type: String!
+  size: Int!
+  url(version: String = "original", baseUrl: String): String
+}
+
+type Price {
+  isTaxable: Boolean!
+  isNetPrice: Boolean!
+  amount: Int!
+  currencyCode: String!
+}
+
+type PriceRange {
+  minPrice: Price!
+  maxPrice: Price!
+}
+
+type PaymentInterface {
+  _id: ID!
+  label: String
+  version: String
+}
+
+enum PaymentProviderType {
+  """Card"""
+  CARD
+
+  """Invoice"""
+  INVOICE
+
+  """Generic"""
+  GENERIC
+}
+
+enum PaymentProviderError {
+  ADAPTER_NOT_FOUND
+  NOT_IMPLEMENTED
+  INCOMPLETE_CONFIGURATION
+  WRONG_CREDENTIALS
+}
+
+type PaymentCredentials {
+  _id: ID!
+  user: User!
+  paymentProvider: PaymentProvider!
+  token: JSON
+  meta: JSON
+  isValid: Boolean!
+  isPreferred: Boolean!
+}
+
+type PaymentProvider {
+  _id: ID!
+  created: DateTimeISO
+  updated: DateTimeISO
+  deleted: DateTimeISO
+  type: PaymentProviderType
+  interface: PaymentInterface
+  configuration: JSON
+  configurationError: PaymentProviderError
+  isActive: Boolean
+  simulatedPrice(currencyCode: String, useNetPrice: Boolean = false, orderId: ID, context: JSON): Price
+}
+
+enum ExternalLinkTarget {
+  """Open on new tab"""
+  BLANK
+
+  """Open in own Iframe"""
+  SELF
+}
+
+type AdminUiLink {
+  href: String
+  title: String
+  target: ExternalLinkTarget
+}
+
+type AdminUiConfigCustomEntityInterface {
+  entityName: String!
+  inlineFragment: String!
+}
+
+type AdminUiConfig {
+  customProperties: [AdminUiConfigCustomEntityInterface!]!
+  externalLinks: [AdminUiLink!]!
+  singleSignOnURL: String
+}
+
+type Shop {
+  _id: ID!
+  language: Language
+  country: Country
+  version: String
+  userRoles: [String!]!
+  adminUiConfig: AdminUiConfig!
+  vapidPublicKey: String
+}
+
+type Stock {
+  deliveryProvider: DeliveryProvider
+  warehousingProvider: WarehousingProvider
+  quantity: Int
+}
+
+type SuccessResponse {
+  success: Boolean
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+enum RoleAction {
+  impersonate
+  stopImpersonation
+  viewEvent
+  viewEvents
+  viewUserRoles
+  viewUserOrders
+  viewUserQuotations
+  viewUserPublicInfos
+  viewUserPrivateInfos
+  viewUserEnrollments
+  viewUserTokens
+  viewLogs
+  viewUser
+  viewUsers
+  viewProduct
+  viewProducts
+  viewLanguages
+  viewLanguage
+  viewCountries
+  viewCountry
+  viewCurrencies
+  viewCurrency
+  viewPaymentProviders
+  viewPaymentProvider
+  viewPaymentInterfaces
+  viewDeliveryProviders
+  viewDeliveryProvider
+  viewDeliveryInterfaces
+  viewWarehousingProviders
+  viewWarehousingProvider
+  viewWarehousingInterfaces
+  viewTranslations
+  viewOrders
+  viewOrder
+  viewShopInfo
+  updateUser
+  updateUsername
+  sendEmail
+  manageUsers
+  manageLanguages
+  manageCountries
+  manageProducts
+  manageCurrencies
+  managePaymentProviders
+  manageDeliveryProviders
+  manageWarehousingProviders
+  updateToken
+  viewToken
+  viewTokens
+  manageAssortments
+  manageFilters
+  createCart
+  createEnrollment
+  updateEnrollment
+  updateCart
+  checkoutCart
+  updateOrder
+  updateOrderDelivery
+  updateOrderPayment
+  updateOrderDiscount
+  updateOrderItem
+  markOrderConfirmed
+  markOrderRejected
+  markOrderPaid
+  markOrderDelivered
+  viewAssortments
+  viewAssortment
+  viewFilter
+  viewFilters
+  reviewProduct
+  updateProductReview
+  manageProductReviews
+  voteProductReview
+  requestQuotation
+  viewQuotations
+  viewQuotation
+  manageQuotations
+  answerQuotation
+  bookmarkProduct
+  manageBookmarks
+  search
+  manageWorker
+  viewEnrollments
+  viewEnrollment
+  registerPaymentCredentials
+  managePaymentCredentials
+  bulkImport
+  logout
+  loginAsGuest
+  loginWithPassword
+  loginWithWebAuthn
+  verifyEmail
+  useWebAuthn
+  pageView
+  createUser
+  forgotPassword
+  resetPassword
+  changePassword
+  viewUserProductReviews
+  heartbeat
+  confirmMediaUpload
+  viewStatistics
+  removeUser
+  downloadFile
+  uploadUserAvatar
+}
+
+"""Type returned when the user logs in"""
+type LoginMethodResponse {
+  """Session ID"""
+  _id: String!
+
+  """Expiration date for the token"""
+  tokenExpires: DateTimeISO!
+
+  """The logged in user"""
+  user: User
+}
+
+type PushSubscription {
+  _id: ID!
+  userAgent: String
+  expirationTime: Timestamp
+  endpoint: String!
+}
+
+type UserProfile {
+  displayName: String
+  phoneMobile: String
+  gender: String
+  birthday: Date
+  address: Address
+}
+
+type UserEmail {
+  address: String!
+  verified: Boolean!
+}
+
+type UserLoginTracker {
+  timestamp: Timestamp!
+  remoteAddress: String
+  remotePort: Int
+  userAgent: String
+  locale: Locale
+  countryCode: String
+}
+
+type WebAuthnMDSv3Metadata {
+  legalHeader: String
+  description: String
+  authenticatorVersion: Int
+  protocolFamily: String
+  schema: Int
+  upv: [JSON!]
+  authenticationAlgorithms: [String!]
+  publicKeyAlgAndEncodings: [String!]
+  attestationTypes: [String!]
+  userVerificationDetails: [JSON!]
+  keyProtection: [String!]
+  matcherProtection: [String!]
+  cryptoStrength: Int
+  attachmentHint: [String!]
+  tcDisplay: [JSON!]
+  attestationRootCertificates: [String!]
+  icon: String
+  authenticatorGetInfo: JSON
+}
+
+type WebAuthnCredentials {
+  _id: ID!
+  created: DateTimeISO!
+  aaguid: String!
+  counter: Int!
+  mdsMetadata: WebAuthnMDSv3Metadata
+}
+
+type Web3Address {
+  address: String!
+  nonce: Int
+  verified: Boolean!
+}
+
+type User {
+  _id: ID!
+  created: DateTimeISO!
+  updated: DateTimeISO
+  deleted: DateTimeISO
+  username: String
+  isGuest: Boolean!
+  isInitialPassword: Boolean!
+  webAuthnCredentials: [WebAuthnCredentials!]!
+  web3Addresses: [Web3Address!]!
+  pushSubscriptions: [PushSubscription!]!
+  name: String!
+  avatar: Media
+  profile: UserProfile
+  language: Language
+  country: Country
+  lastBillingAddress: Address
+  lastContact: Contact
+  lastLogin: UserLoginTracker
+  primaryEmail: UserEmail
+  emails: [UserEmail!]
+  roles: [String!]
+  tags: [LowerCaseString!]
+  cart(orderNumber: String): Order
+  orders(limit: Int, offset: Int, status: [OrderStatus!], queryString: String, sort: [SortOptionInput!], includeCarts: Boolean = false): [Order!]!
+  quotations(sort: [SortOptionInput!], queryString: String, limit: Int = 10, offset: Int = 0): [Quotation!]!
+  bookmarks: [Bookmark!]!
+  paymentCredentials: [PaymentCredentials!]!
+  enrollments(limit: Int, offset: Int, queryString: String, status: [String!], sort: [SortOptionInput!]): [Enrollment!]!
+  allowedActions: [RoleAction!]!
+  tokens: [Token!]!
+  reviews(limit: Int = 10, offset: Int = 0, sort: [SortOptionInput!]): [ProductReview!]!
+  reviewsCount: Int!
+}
+
+type WarehousingInterface {
+  _id: ID!
+  label: String
+  version: String
+}
+
+enum WarehousingProviderType {
+  """
+  Physical warehousing providers resemble stores or facilities that hold a quantity of stocks physically in stock.
+  """
+  PHYSICAL
+
+  """
+  Virtual warehousing providers resemble software that control ownership and validity of virtual products (for ex. smart contract bridges)
+  """
+  VIRTUAL
+}
+
+enum WarehousingProviderError {
+  ADAPTER_NOT_FOUND
+  NOT_IMPLEMENTED
+  INCOMPLETE_CONFIGURATION
+  WRONG_CREDENTIALS
+}
+
+type WarehousingProvider {
+  _id: ID!
+  created: DateTimeISO
+  updated: DateTimeISO
+  deleted: DateTimeISO
+  type: WarehousingProviderType
+  interface: WarehousingInterface
+  configuration: JSON
+  configurationError: WarehousingProviderError
+  isActive: Boolean
+}
+
+enum TokenExportStatus {
+  CENTRALIZED
+  EXPORTING
+  DECENTRALIZED
+}
+
+type Token {
+  _id: ID!
+  product: TokenizedProduct!
+  status: TokenExportStatus!
+  quantity: Int!
+  isInvalidateable: Boolean!
+
+  """
+  Get an access key that you can pass along the HTTP Header "x-token-accesskey" to access the token anonymously.
+  """
+  accessKey: String!
+  invalidatedDate: DateTimeISO
+  user: User
+  expiryDate: DateTimeISO
+  contractAddress: String
+  walletAddress: String
+  chainId: String
+  chainTokenId: String
+  ercMetadata(forceLocale: Locale): JSON
+}
+
+enum ProductStatus {
+  """Unpublished (hidden from catalog)"""
+  DRAFT
+
+  """Published"""
+  ACTIVE
+
+  """Deleted"""
+  DELETED
+}
+
+type ProductDiscount {
+  _id: ID!
+  interface: DiscountInterface
+  total: Price!
+}
+
+type ProductMediaTexts {
+  _id: ID!
+  locale: Locale!
+  title: String
+  subtitle: String
+}
+
+type ProductMedia {
+  _id: ID!
+  tags: [LowerCaseString!]
+  file: Media
+  sortKey: Int!
+  texts(forceLocale: Locale): ProductMediaTexts
+}
+
+type ProductTexts {
+  _id: ID!
+  locale: Locale!
+  slug: String
+  title: String
+  subtitle: String
+  description: String
+  vendor: String
+  brand: String
+  labels: [String!]
+}
+
+"""Abstract Product"""
+interface Product {
+  _id: ID!
+  sequence: Int!
+  status: ProductStatus!
+  tags: [LowerCaseString!]
+  created: DateTimeISO
+  updated: DateTimeISO
+  published: DateTimeISO
+  texts(forceLocale: Locale): ProductTexts
+  media(limit: Int = 10, offset: Int = 0, tags: [LowerCaseString!]): [ProductMedia!]!
+  reviews(limit: Int = 10, offset: Int = 0, sort: [SortOptionInput!], queryString: String): [ProductReview!]!
+  reviewsCount(queryString: String): Int!
+  assortmentPaths: [ProductAssortmentPath!]!
+  siblings(assortmentId: ID, limit: Int = 10, offset: Int = 0, includeInactive: Boolean = false): [Product!]!
+}
+
+"""Directed assortment to product paths (breadcrumbs)"""
+type ProductAssortmentPath {
+  assortmentProduct: AssortmentProduct!
+  links: [AssortmentPathLink!]!
+}
+
+type ProductReview {
+  _id: ID!
+  created: DateTimeISO
+  updated: DateTimeISO
+  deleted: DateTimeISO
+  author: User!
+  product: Product!
+  rating: Int
+  title: String
+  review: String
+  voteCount(type: ProductReviewVoteType): Int
+  ownVotes: [ProductReviewVote!]!
+}
+
+type ProductReviewVote {
+  _id: ID!
+  timestamp: Timestamp!
+  type: ProductReviewVoteType!
+}
+
+enum ProductReviewVoteType {
+  UPVOTE
+  DOWNVOTE
+  REPORT
+}
+
+type ProductConfigurationParameter {
+  key: String!
+  value: String!
+}
+
+type PriceLevel {
+  minQuantity: Int!
+  maxQuantity: Int
+  price: Price!
+}
+
+type ProductCatalogPrice {
+  isTaxable: Boolean!
+  isNetPrice: Boolean!
+  country: Country!
+  currency: Currency!
+  amount: Int!
+  maxQuantity: Int
+}
+
+enum ProductVariationType {
+  """Color Picker"""
+  COLOR
+
+  """Text Answers"""
+  TEXT
+}
+
+type ProductVariationTexts {
+  _id: ID!
+  locale: Locale!
+  title: String
+  subtitle: String
+}
+
+type ProductVariationOption {
+  _id: ID!
+  texts(forceLocale: Locale): ProductVariationTexts
+  value: String
+}
+
+type ProductVariation {
+  _id: ID!
+  texts(forceLocale: Locale): ProductVariationTexts
+  type: ProductVariationType
+  key: String
+  options: [ProductVariationOption!]
+}
+
+"""Key Value Combination"""
+type ProductVariationAssignmentVector {
+  _id: ID!
+  variation: ProductVariation
+  option: ProductVariationOption
+}
+
+"""Key Value Combination to Product Assignment"""
+type ProductVariationAssignment {
+  _id: ID!
+
+  """Query string key=val&key=val ..."""
+  vectors: [ProductVariationAssignmentVector!]
+
+  """Assigned Product"""
+  product: Product
+}
+
+"""Configurable Product (Proxy)"""
+type ConfigurableProduct implements Product {
+  _id: ID!
+  sequence: Int!
+  status: ProductStatus!
+  tags: [LowerCaseString!]
+  created: DateTimeISO
+  updated: DateTimeISO
+  published: DateTimeISO
+  media(limit: Int = 10, offset: Int = 0, tags: [LowerCaseString!]): [ProductMedia!]!
+  texts(forceLocale: Locale): ProductTexts
+  assortmentPaths: [ProductAssortmentPath!]!
+  siblings(assortmentId: ID, limit: Int = 10, offset: Int = 0, includeInactive: Boolean = false): [Product!]!
+  reviews(limit: Int = 10, offset: Int = 0, sort: [SortOptionInput!], queryString: String): [ProductReview!]!
+  reviewsCount(queryString: String): Int!
+  catalogPriceRange(quantity: Int = 0, vectors: [ProductAssignmentVectorInput!], includeInactive: Boolean = false, currencyCode: String): PriceRange
+  simulatedPriceRange(quantity: Int, vectors: [ProductAssignmentVectorInput!], includeInactive: Boolean = false, currencyCode: String, useNetPrice: Boolean = false): PriceRange
+
+  """Reduced list of possible products by key/value combinations"""
+  products(vectors: [ProductAssignmentVectorInput!], includeInactive: Boolean = false): [Product!]
+
+  """Product's variations (keys) and their options (values)"""
+  variations: [ProductVariation!]
+
+  """Complete assignment matrix"""
+  assignments(includeInactive: Boolean = false): [ProductVariationAssignment!]!
+}
+
+"""Simple Product"""
+type SimpleProduct implements Product {
+  _id: ID!
+  sequence: Int!
+  status: ProductStatus!
+  tags: [LowerCaseString!]
+  created: DateTimeISO
+  updated: DateTimeISO
+  published: DateTimeISO
+  media(limit: Int = 10, offset: Int = 0, tags: [LowerCaseString!]): [ProductMedia!]!
+  texts(forceLocale: Locale): ProductTexts
+  catalogPrice(quantity: Int = 1, currencyCode: String): Price
+  leveledCatalogPrices(currencyCode: String): [PriceLevel!]!
+  simulatedPrice(currencyCode: String, useNetPrice: Boolean = false, quantity: Int = 1, configuration: [ProductConfigurationParameterInput!]): Price
+  simulatedDispatches(deliveryProviderType: DeliveryProviderType = SHIPPING, referenceDate: Timestamp, quantity: Int = 1): [Dispatch!]
+  simulatedStocks(deliveryProviderType: DeliveryProviderType = SHIPPING, referenceDate: Timestamp): [Stock!]
+  assortmentPaths: [ProductAssortmentPath!]!
+  siblings(assortmentId: ID, limit: Int = 10, offset: Int = 0, includeInactive: Boolean = false): [Product!]!
+  dimensions: Dimensions
+  sku: String
+  baseUnit: String
+  salesUnit: String
+  salesQuantityPerUnit: String
+  defaultOrderQuantity: Int
+  reviews(limit: Int = 10, offset: Int = 0, sort: [SortOptionInput!], queryString: String): [ProductReview!]!
+  reviewsCount(queryString: String): Int!
+}
+
+"""A Bundle product consists of multiple configured products"""
+type BundleProduct implements Product {
+  _id: ID!
+  sequence: Int!
+  status: ProductStatus!
+  tags: [LowerCaseString!]
+  created: DateTimeISO
+  updated: DateTimeISO
+  published: DateTimeISO
+  media(limit: Int = 10, offset: Int = 0, tags: [LowerCaseString!]): [ProductMedia!]!
+  texts(forceLocale: Locale): ProductTexts
+  bundleItems: [ProductBundleItem!]
+  reviews(limit: Int = 10, offset: Int = 0, sort: [SortOptionInput!], queryString: String): [ProductReview!]!
+  reviewsCount(queryString: String): Int!
+  assortmentPaths: [ProductAssortmentPath!]!
+  siblings(assortmentId: ID, limit: Int = 10, offset: Int = 0, includeInactive: Boolean = false): [Product!]!
+}
+
+type ProductBundleItem {
+  product: Product!
+  quantity: Int!
+  configuration: [ProductConfigurationParameter!]
+}
+
+enum ProductPlanConfigurationInterval {
+  HOURS
+  DAYS
+  WEEKS
+  MONTHS
+  YEARS
+}
+
+enum ProductPlanUsageCalculationType {
+  LICENSED
+  METERED
+}
+
+type ProductPlanConfiguration {
+  usageCalculationType: ProductPlanUsageCalculationType!
+  billingInterval: ProductPlanConfigurationInterval!
+  billingIntervalCount: Int
+  trialInterval: ProductPlanConfigurationInterval
+  trialIntervalCount: Int
+}
+
+input UpdateProductPlanInput {
+  usageCalculationType: ProductPlanUsageCalculationType!
+  billingInterval: ProductPlanConfigurationInterval!
+  billingIntervalCount: Int
+  trialInterval: ProductPlanConfigurationInterval
+  trialIntervalCount: Int
+}
+
+"""Plan (Virtual Product that somebody can enroll to)"""
+type PlanProduct implements Product {
+  _id: ID!
+  sequence: Int!
+  status: ProductStatus!
+  tags: [LowerCaseString!]
+  created: DateTimeISO
+  updated: DateTimeISO
+  published: DateTimeISO
+  media(limit: Int = 10, offset: Int = 0, tags: [LowerCaseString!]): [ProductMedia!]!
+  texts(forceLocale: Locale): ProductTexts
+  catalogPrice(quantity: Int = 1, currencyCode: String): Price
+  leveledCatalogPrices(currencyCode: String): [PriceLevel!]!
+  simulatedPrice(currencyCode: String, useNetPrice: Boolean = false, quantity: Int = 1, configuration: [ProductConfigurationParameterInput!]): Price
+  assortmentPaths(forceLocale: Locale): [ProductAssortmentPath!]!
+  siblings(assortmentId: ID, limit: Int = 10, offset: Int = 0, includeInactive: Boolean = false): [Product!]!
+  salesUnit: String
+  salesQuantityPerUnit: String
+  defaultOrderQuantity: Int
+  reviews(limit: Int = 10, offset: Int = 0, sort: [SortOptionInput!], queryString: String): [ProductReview!]!
+  reviewsCount(queryString: String): Int!
+  plan: ProductPlanConfiguration
+}
+
+input UpdateProductTokenizationInput {
+  contractAddress: String!
+  contractStandard: SmartContractStandard!
+  tokenId: String!
+  supply: Int!
+  ercMetadataProperties: JSON
+}
+
+enum SmartContractStandard {
+  ERC1155
+  ERC721
+}
+
+type ContractConfiguration {
+  tokenId: String!
+  supply: Int!
+  ercMetadataProperties: JSON
+}
+
+"""Tokenized Product (Blockchain materialized Product)"""
+type TokenizedProduct implements Product {
+  _id: ID!
+  sequence: Int!
+  status: ProductStatus!
+  tags: [LowerCaseString!]
+  created: DateTimeISO
+  updated: DateTimeISO
+  published: DateTimeISO
+  media(limit: Int = 10, offset: Int = 0, tags: [LowerCaseString!]): [ProductMedia!]!
+  texts(forceLocale: Locale): ProductTexts
+  catalogPrice(quantity: Int = 1, currencyCode: String): Price
+  leveledCatalogPrices(currencyCode: String): [PriceLevel!]!
+  simulatedPrice(currencyCode: String, useNetPrice: Boolean = false, quantity: Int = 1, configuration: [ProductConfigurationParameterInput!]): Price
+  simulatedStocks(referenceDate: Timestamp): [Stock!]
+  assortmentPaths(forceLocale: Locale): [ProductAssortmentPath!]!
+  siblings(assortmentId: ID, limit: Int = 10, offset: Int = 0, includeInactive: Boolean = false): [Product!]!
+  reviews(limit: Int = 10, offset: Int = 0, sort: [SortOptionInput!], queryString: String): [ProductReview!]!
+  reviewsCount(queryString: String): Int!
+  contractAddress: String
+  contractStandard: SmartContractStandard
+  contractConfiguration: ContractConfiguration
+  tokens: [Token!]!
+  tokensCount: Int!
+}
+
+enum OrderStatus {
+  """Open Order / Cart"""
+  OPEN
+
+  """Order has been sent but confirmation awaiting"""
+  PENDING
+
+  """Order has been rejected"""
+  REJECTED
+
+  """Order has been confirmed"""
+  CONFIRMED
+
+  """Order has been fulfilled completely (all positions in delivery)"""
+  FULLFILLED
+}
+
+enum OrderPriceCategory {
+  """Product Price Total"""
+  ITEMS
+
+  """Payment Fees"""
+  PAYMENT
+
+  """Delivery Fees"""
+  DELIVERY
+
+  """Tax"""
+  TAXES
+
+  """Discount"""
+  DISCOUNTS
+}
+
+"""Just an order"""
+type Order {
+  _id: ID!
+  billingAddress: Address
+  confirmed: DateTimeISO
+  rejected: DateTimeISO
+  contact: Contact
+  country: Country
+  created: DateTimeISO
+  currency: Currency
+  delivery: OrderDelivery
+  discounts: [OrderDiscount!]
+  enrollment: Enrollment
+  fullfilled: DateTimeISO
+  items: [OrderItem!]
+  ordered: DateTimeISO
+  orderNumber: String
+  payment: OrderPayment
+  status: OrderStatus
+  supportedDeliveryProviders: [DeliveryProvider!]!
+  supportedPaymentProviders: [PaymentProvider!]!
+  total(category: OrderPriceCategory, useNetPrice: Boolean = false): Price
+  updated: DateTimeISO
+  user: User
+}
+
+type OrderStatistics {
+  newCount: Int!
+  checkoutCount: Int!
+  rejectCount: Int!
+  confirmCount: Int!
+  fulfillCount: Int!
+}
+
+enum OrderItemPriceCategory {
+  """Discount"""
+  DISCOUNT
+
+  """Tax"""
+  TAX
+
+  """Items"""
+  ITEM
+}
+
+type OrderItem {
+  _id: ID!
+  product: Product!
+  order: Order!
+  quantity: Int!
+  originalProduct: Product!
+  quotation: Quotation
+  unitPrice(useNetPrice: Boolean = false): Price
+  total(category: OrderItemPriceCategory, useNetPrice: Boolean = false): Price
+  discounts: [OrderItemDiscount!]
+  dispatches: [Dispatch!]
+  configuration: [ProductConfigurationParameter!]
+  tokens: [Token!]!
+}
+
+enum OrderDiscountTrigger {
+  """System triggered"""
+  SYSTEM
+
+  """User triggered"""
+  USER
+}
+
+interface OrderDiscountable {
+  _id: ID!
+  orderDiscount: OrderDiscount!
+  total: Price!
+}
+
+type OrderGlobalDiscount implements OrderDiscountable {
+  _id: ID!
+  orderDiscount: OrderDiscount!
+  order: Order!
+  total: Price!
+}
+
+type OrderPaymentDiscount implements OrderDiscountable {
+  _id: ID!
+  orderDiscount: OrderDiscount!
+  payment: OrderPayment!
+  total: Price!
+}
+
+type OrderDeliveryDiscount implements OrderDiscountable {
+  _id: ID!
+  orderDiscount: OrderDiscount!
+  delivery: OrderDelivery!
+  total: Price!
+}
+
+type OrderItemDiscount implements OrderDiscountable {
+  _id: ID!
+  orderDiscount: OrderDiscount!
+  item: OrderItem!
+  total: Price!
+}
+
+type OrderDiscount {
+  _id: ID!
+  trigger: OrderDiscountTrigger!
+  code: String
+  order: Order!
+  interface: DiscountInterface
+  total(useNetPrice: Boolean = false): Price!
+  discounted: [OrderDiscountable!]
+}
+
+enum OrderDeliveryStatus {
+  """Order is not delivered"""
+  OPEN
+
+  """Delivery complete"""
+  DELIVERED
+
+  """Delivery returned"""
+  RETURNED
+}
+
+interface OrderDelivery {
+  _id: ID!
+  provider: DeliveryProvider
+  status: OrderDeliveryStatus
+  delivered: DateTimeISO
+  fee: Price
+  discounts: [OrderDeliveryDiscount!]
+}
+
+type OrderDeliveryPickUp implements OrderDelivery {
+  _id: ID!
+  provider: DeliveryProvider
+  status: OrderDeliveryStatus
+  delivered: DateTimeISO
+  fee: Price
+  discounts: [OrderDeliveryDiscount!]
+  pickUpLocations: [OrderPickUpLocation!]!
+  activePickUpLocation: OrderPickUpLocation
+}
+
+type OrderDeliveryShipping implements OrderDelivery {
+  _id: ID!
+  provider: DeliveryProvider
+  status: OrderDeliveryStatus
+  delivered: DateTimeISO
+  fee: Price
+  discounts: [OrderDeliveryDiscount!]
+  address: Address
+}
+
+enum OrderPaymentStatus {
+  """Unpaid Order"""
+  OPEN
+
+  """Order has been paid"""
+  PAID
+
+  """Order has been refunded"""
+  REFUNDED
+}
+
+interface OrderPayment {
+  _id: ID!
+  provider: PaymentProvider
+  status: OrderPaymentStatus
+  fee: Price
+  paid: DateTimeISO
+  discounts: [OrderPaymentDiscount!]
+}
+
+type OrderPaymentInvoice implements OrderPayment {
+  _id: ID!
+  provider: PaymentProvider
+  status: OrderPaymentStatus
+  fee: Price
+  paid: DateTimeISO
+  discounts: [OrderPaymentDiscount!]
+}
+
+type OrderPaymentCard implements OrderPayment {
+  _id: ID!
+  provider: PaymentProvider
+  status: OrderPaymentStatus
+  paid: DateTimeISO
+  fee: Price
+  discounts: [OrderPaymentDiscount!]
+}
+
+type OrderPaymentGeneric implements OrderPayment {
+  _id: ID!
+  provider: PaymentProvider
+  status: OrderPaymentStatus
+  fee: Price
+  paid: DateTimeISO
+  discounts: [OrderPaymentDiscount!]
+}
+
+type OrderPickUpLocation {
+  _id: ID!
+  order: Order!
+  name: String!
+  address: Address
+  geoPoint: GeoPosition
+}
+
+enum QuotationStatus {
+  """Request for Proposal"""
+  REQUESTED
+
+  """Awaiting Offer"""
+  PROCESSING
+
+  """Proposal ready"""
+  PROPOSED
+
+  """Quotation has been rejected by either party"""
+  REJECTED
+
+  """Quotation has been used to order the product"""
+  FULLFILLED
+}
+
+enum QuotationDocumentType {
+  """Proposal"""
+  PROPOSAL
+
+  """Other"""
+  OTHER
+}
+
+"""Quotation"""
+type Quotation {
+  _id: ID!
+  user: User!
+  product: Product!
+  status: QuotationStatus!
+  created: DateTimeISO!
+  expires: DateTimeISO
+  updated: DateTimeISO
+  isExpired(referenceDate: Timestamp): Boolean
+  quotationNumber: String
+  fullfilled: DateTimeISO
+  rejected: DateTimeISO
+  country: Country
+  currency: Currency
+  configuration: [ProductConfigurationParameter!]
+}
+
+type GeoPosition {
+  latitude: Float!
+  longitude: Float!
+  altitute: Float
+}
+
+type Bookmark {
+  _id: ID!
+  user: User!
+  product: Product!
+  created: DateTimeISO
+}
+
+enum SearchOrderBy {
+  default
+}
+
+"""Search result"""
+type SearchResult {
+  productsCount: Int!
+  filteredProductsCount: Int!
+  filters: [LoadedFilter!]!
+  products(limit: Int = 10, offset: Int = 0): [Product!]!
+}
+
+"""Search result"""
+type ProductSearchResult {
+  productsCount: Int!
+  filteredProductsCount: Int!
+  filters: [LoadedFilter!]!
+  products(limit: Int = 10, offset: Int = 0): [Product!]!
+}
+
+type AssortmentSearchResult {
+  assortmentsCount: Int!
+  assortments(limit: Int = 10, offset: Int = 0): [Assortment!]!
+}
+
+enum WorkStatus {
+  NEW
+  ALLOCATED
+  SUCCESS
+  FAILED
+  DELETED
+}
+
+enum WorkType {
+  BULK_IMPORT
+  ZOMBIE_KILLER
+  MESSAGE
+  EXTERNAL
+  HTTP_REQUEST
+  HEARTBEAT
+  EMAIL
+  ERROR_NOTIFICATIONS
+  UPDATE_ECB_RATES
+  UPDATE_COINBASE_RATES
+  EXPORT_TOKEN
+  SMS
+  PUSH
+  ENROLLMENT_ORDER_GENERATOR
+  UNKNOWN
+}
+
+type WorkOutput {
+  result: JSON
+  error: JSON
+  success: Boolean!
+}
+
+type Work {
+  _id: ID!
+  started: DateTimeISO
+  finished: DateTimeISO
+  created: DateTimeISO!
+  updated: DateTimeISO
+  deleted: DateTimeISO
+  priority: Int!
+  type: WorkType!
+  status: WorkStatus!
+  worker: String
+  input: JSON
+  result: JSON
+  error: JSON
+  success: Boolean
+  scheduled: DateTimeISO
+  original: Work
+  retries: Int!
+  timeout: Int
+  autoscheduled: Boolean
+}
+
+type WorkStatistics {
+  type: WorkType!
+  newCount: Int!
+  startCount: Int!
+  errorCount: Int!
+  successCount: Int!
+  deleteCount: Int!
+}
+
+enum EnrollmentStatus {
+  """Initial"""
+  INITIAL
+
+  """Active Enrollment"""
+  ACTIVE
+
+  """Paused because of overdue payments"""
+  PAUSED
+
+  """Terminated / Ended enrollment"""
+  TERMINATED
+}
+
+type EnrollmentPlan {
+  product: PlanProduct!
+  quantity: Int!
+  configuration: [ProductConfigurationParameter!]
+}
+
+type EnrollmentPayment {
+  provider: PaymentProvider
+}
+
+type EnrollmentDelivery {
+  provider: DeliveryProvider
+}
+
+type EnrollmentPeriod {
+  start: DateTimeISO!
+  end: DateTimeISO!
+  isTrial: Boolean!
+  order: Order
+}
+
+"""Enrollment"""
+type Enrollment {
+  _id: ID!
+  billingAddress: Address
+  contact: Contact
+  country: Country
+  created: DateTimeISO!
+  currency: Currency
+  delivery: EnrollmentDelivery
+  enrollmentNumber: String
+  expires: DateTimeISO
+  isExpired(referenceDate: Timestamp): Boolean
+  payment: EnrollmentPayment
+  periods: [EnrollmentPeriod!]!
+  plan: EnrollmentPlan!
+  status: EnrollmentStatus!
+  updated: DateTimeISO
+  user: User!
+}
+
+enum EventType {
+  PAGE_VIEW
+  API_LOGIN_TOKEN_CREATED
+  API_LOGOUT
+  ASSORTMENT_CREATE
+  ASSORTMENT_REMOVE
+  ASSORTMENT_SET_BASE
+  ASSORTMENT_UPDATE
+  ASSORTMENT_ADD_FILTER
+  ASSORTMENT_REMOVE_FILTER
+  ASSORTMENT_REORDER_FILTERS
+  ASSORTMENT_ADD_LINK
+  ASSORTMENT_REMOVE_LINK
+  ASSORTMENT_REORDER_LINKS
+  ASSORTMENT_ADD_PRODUCT
+  ASSORTMENT_REMOVE_PRODUCT
+  ASSORTMENT_REORDER_PRODUCTS
+  ASSORTMENT_UPDATE_TEXT
+  ASSORTMENT_ADD_MEDIA
+  ASSORTMENT_REMOVE_MEDIA
+  ASSORTMENT_REORDER_MEDIA
+  ASSORTMENT_UPDATE_MEDIA_TEXT
+  BOOKMARK_CREATE
+  BOOKMARK_UPDATE
+  BOOKMARK_REMOVE
+  COUNTRY_CREATE
+  COUNTRY_UPDATE
+  COUNTRY_REMOVE
+  CURRENCY_CREATE
+  CURRENCY_UPDATE
+  CURRENCY_REMOVE
+  DELIVERY_PROVIDER_CREATE
+  DELIVERY_PROVIDER_UPDATE
+  DELIVERY_PROVIDER_REMOVE
+  ENROLLMENT_ADD_PERIOD
+  ENROLLMENT_CREATE
+  ENROLLMENT_REMOVE
+  ENROLLMENT_UPDATE
+  FILE_CREATE
+  FILE_UPDATE
+  FILE_REMOVE
+  FILTER_CREATE
+  FILTER_REMOVE
+  FILTER_UPDATE
+  FILTER_UPDATE_TEXT
+  LANGUAGE_CREATE
+  LANGUAGE_UPDATE
+  LANGUAGE_REMOVE
+  ORDER_CHECKOUT
+  ORDER_CONFIRMED
+  ORDER_REJECTED
+  ORDER_FULLFILLED
+  ORDER_CREATE
+  ORDER_REMOVE
+  ORDER_SET_DELIVERY_PROVIDER
+  ORDER_SET_PAYMENT_PROVIDER
+  ORDER_UPDATE
+  ORDER_CREATE_DISCOUNT
+  ORDER_UPDATE_DISCOUNT
+  ORDER_REMOVE_DISCOUNT
+  ORDER_UPDATE_CART_ITEM
+  ORDER_REMOVE_CART_ITEM
+  ORDER_EMPTY_CART
+  ORDER_ADD_PRODUCT
+  ORDER_UPDATE_PAYMENT
+  ORDER_SIGN_PAYMENT
+  ORDER_PAY
+  ORDER_DELIVER
+  ORDER_UPDATE_DELIVERY
+  PAYMENT_PROVIDER_CREATE
+  PAYMENT_PROVIDER_UPDATE
+  PAYMENT_PROVIDER_REMOVE
+  PRODUCT_CREATE
+  PRODUCT_REMOVE
+  PRODUCT_SET_BASE
+  PRODUCT_UPDATE
+  PRODUCT_PUBLISH
+  PRODUCT_UNPUBLISH
+  PRODUCT_ADD_ASSIGNMENT
+  PRODUCT_REMOVE_ASSIGNMENT
+  PRODUCT_CREATE_BUNDLE_ITEM
+  PRODUCT_REMOVE_BUNDLE_ITEM
+  PRODUCT_UPDATE_TEXT
+  PRODUCT_ADD_MEDIA
+  PRODUCT_REMOVE_MEDIA
+  PRODUCT_REORDER_MEDIA
+  PRODUCT_UPDATE_MEDIA_TEXT
+  PRODUCT_REVIEW_CREATE
+  PRODUCT_REMOVE_REVIEW
+  PRODUCT_UPDATE_REVIEW
+  PRODUCT_REVIEW_ADD_VOTE
+  PRODUCT_REMOVE_REVIEW_VOTE
+  PRODUCT_CREATE_VARIATION
+  PRODUCT_REMOVE_VARIATION
+  PRODUCT_UPDATE_VARIATION_TEXT
+  PRODUCT_VARIATION_OPTION_CREATE
+  PRODUCT_REMOVE_VARIATION_OPTION
+  QUOTATION_REQUEST_CREATE
+  QUOTATION_REMOVE
+  QUOTATION_UPDATE
+  USER_ACCOUNT_ACTION
+  USER_CREATE
+  USER_ADD_ROLES
+  USER_UPDATE
+  USER_UPDATE_PROFILE
+  USER_UPDATE_ROLE
+  USER_UPDATE_TAGS
+  USER_UPDATE_AVATAR
+  USER_UPDATE_GUEST
+  USER_UPDATE_USERNAME
+  USER_UPDATE_PASSWORD
+  USER_UPDATE_HEARTBEAT
+  USER_UPDATE_BILLING_ADDRESS
+  USER_UPDATE_LAST_CONTACT
+  USER_REMOVE
+  WAREHOUSING_PROVIDER_CREATE
+  WAREHOUSING_PROVIDER_UPDATE
+  WAREHOUSING_PROVIDER_REMOVE
+  TOKEN_OWNERSHIP_CHANGED
+  TOKEN_INVALIDATED
+  WORK_ADDED
+  WORK_ALLOCATED
+  WORK_FINISHED
+  WORK_DELETED
+  WORK_RESCHEDULED
+  UNKNOWN
+}
+
+type Event {
+  _id: ID!
+  type: String!
+  payload: JSON
+  created: Timestamp!
+}
+
+type EventStatistics {
+  type: EventType!
+  emitCount: Int!
+}
+
+type MediaUploadTicket {
+  _id: ID!
+  putURL: String!
+  expires: DateTimeISO!
+}
+
+input SortOptionInput {
+  key: String!
+  value: SortDirection!
+}
+
+input UserProfileInput {
+  displayName: String
+  birthday: Timestamp
+  phoneMobile: String
+  gender: String
+  address: AddressInput
+}
+
+input AddressInput {
+  firstName: String
+  lastName: String
+  company: String
+  addressLine: String
+  addressLine2: String
+  postalCode: String
+  regionCode: String
+  city: String
+  countryCode: String
+}
+
+input ContactInput {
+  emailAddress: String
+  telNumber: String
+}
+
+input CreateLanguageInput {
+  isoCode: String!
+}
+
+input UpdateLanguageInput {
+  isoCode: String!
+  isActive: Boolean
+}
+
+input CreateCountryInput {
+  isoCode: String!
+}
+
+input UpdateCountryInput {
+  isoCode: String!
+  isActive: Boolean
+  defaultCurrencyCode: String
+}
+
+input CreateCurrencyInput {
+  isoCode: String!
+  contractAddress: String
+  decimals: Int
+}
+
+input UpdateCurrencyInput {
+  isoCode: String!
+  isActive: Boolean
+  contractAddress: String
+  decimals: Int
+}
+
+input CreateProductInput {
+  type: String!
+  tags: [LowerCaseString!]
+}
+
+input ProductVariationTextInput {
+  locale: Locale!
+  title: String
+  subtitle: String
+}
+
+input CreateProductVariationInput {
+  key: String!
+  type: ProductVariationType!
+}
+
+input ProductAssignmentVectorInput {
+  key: String!
+  value: String!
+}
+
+input UpdateProductInput {
+  tags: [LowerCaseString!]
+  sequence: Int
+  meta: JSON
+}
+
+input ProductTextInput {
+  locale: Locale!
+  slug: String
+  title: String
+  subtitle: String
+  description: String
+  vendor: String
+  brand: String
+  labels: [String!]
+}
+
+input ProductMediaTextInput {
+  locale: Locale!
+  title: String
+  subtitle: String
+}
+
+input UpdateProductCommercePricingInput {
+  amount: Int!
+  maxQuantity: Int
+  isTaxable: Boolean
+  isNetPrice: Boolean
+  currencyCode: String!
+  countryCode: String!
+}
+
+input UpdateProductCommerceInput {
+  pricing: [UpdateProductCommercePricingInput!]!
+}
+
+input UpdateProductSupplyInput {
+  weightInGram: Int
+  heightInMillimeters: Int
+  lengthInMillimeters: Int
+  widthInMillimeters: Int
+}
+
+input UpdateProductWarehousingInput {
+  sku: String
+  baseUnit: String
+}
+
+input ReorderProductMediaInput {
+  productMediaId: ID!
+  sortKey: Int!
+}
+
+input CreateWarehousingProviderInput {
+  type: WarehousingProviderType!
+  adapterKey: String!
+}
+
+input CreateDeliveryProviderInput {
+  type: DeliveryProviderType!
+  adapterKey: String!
+}
+
+input CreatePaymentProviderInput {
+  type: PaymentProviderType!
+  adapterKey: String!
+}
+
+input UpdateProviderInput {
+  configuration: [JSON!]
+}
+
+input CreateAssortmentInput {
+  isRoot: Boolean
+  tags: [LowerCaseString!]
+}
+
+input UpdateAssortmentInput {
+  isRoot: Boolean
+  tags: [LowerCaseString!]
+  isActive: Boolean
+  sequence: Int
+}
+
+input AssortmentTextInput {
+  locale: Locale!
+  slug: String
+  title: String
+  subtitle: String
+  description: String
+}
+
+input ReorderAssortmentProductInput {
+  assortmentProductId: ID!
+  sortKey: Int!
+}
+
+input ReorderAssortmentFilterInput {
+  assortmentFilterId: ID!
+  sortKey: Int!
+}
+
+input ReorderAssortmentLinkInput {
+  assortmentLinkId: ID!
+  sortKey: Int!
+}
+
+input AssortmentMediaTextInput {
+  locale: Locale!
+  title: String
+  subtitle: String
+}
+
+input ReorderAssortmentMediaInput {
+  assortmentMediaId: ID!
+  sortKey: Int!
+}
+
+input CreateFilterInput {
+  key: String!
+  type: FilterType!
+  options: [String!]
+}
+
+input UpdateFilterInput {
+  isActive: Boolean
+  key: String
+}
+
+input FilterTextInput {
+  locale: Locale!
+  title: String
+  subtitle: String
+}
+
+input ProductConfigurationParameterInput {
+  key: String!
+  value: String!
+}
+
+input ProductReviewInput {
+  rating: Int
+  title: String
+  review: String
+}
+
+input FilterQueryInput {
+  key: String!
+  value: String
+}
+
+input CreateProductBundleItemInput {
+  productId: ID!
+  quantity: Int!
+}
+
+input EnrollmentDeliveryInput {
+  deliveryProviderId: ID!
+  meta: JSON
+}
+
+input EnrollmentPaymentInput {
+  paymentProviderId: ID!
+  meta: JSON
+}
+
+input EnrollmentPlanInput {
+  productId: ID!
+  quantity: Int = 1
+  configuration: [ProductConfigurationParameterInput!]
+}
+
+input OrderItemInput {
+  productId: ID!
+  quantity: Int = 1
+  configuration: [ProductConfigurationParameterInput!]
+}
+
+input DateFilterInput {
+  start: DateTimeISO
+  end: DateTimeISO
+}
+
+type Query {
+  """Currently logged in user"""
+  me: User
+
+  """User impersonating currently logged in user"""
+  impersonator: User
+
+  """
+  Get list of users, by default sorted by creation date (ascending) unless a queryString is set
+  """
+  users(limit: Int = 20, offset: Int = 0, includeGuests: Boolean = false, queryString: String, sort: [SortOptionInput!], emailVerified: Boolean, lastLogin: DateFilterInput): [User!]!
+
+  """Get total number of users in the system that match query"""
+  usersCount(includeGuests: Boolean = false, queryString: String, emailVerified: Boolean, lastLogin: DateFilterInput): Int!
+
+  """
+  Specific user data if userId provided, else returns currently logged in
+  """
+  user(userId: ID): User
+
+  """
+  Return total number of published products filtered either by tags or explicit slugs
+  If a slug is provided
+  """
+  productsCount(tags: [LowerCaseString!], slugs: [String!], includeDrafts: Boolean = false, queryString: String): Int!
+
+  """
+  Simple list of published products filtered either by tags or explicit slugs
+  If a slug is provided, limit and offset don't have any effect on the result
+  By default sorted by sequence (ascending) and published (ascending) unless a queryString is set
+  """
+  products(queryString: String, tags: [LowerCaseString!], slugs: [String!], limit: Int = 10, offset: Int = 0, includeDrafts: Boolean = false, sort: [SortOptionInput!]): [Product!]!
+
+  """Get a specific product by id or slug"""
+  product(productId: ID, slug: String): Product
+
+  """List products specified prices"""
+  productCatalogPrices(productId: ID!): [ProductCatalogPrice!]!
+
+  """Localization: Meta data for product"""
+  translatedProductTexts(productId: ID!): [ProductTexts!]!
+
+  """
+  Localization: Media title/subtitle of a media that is attached to a product
+  """
+  translatedProductMediaTexts(productMediaId: ID!): [ProductMediaTexts!]!
+
+  """Localization: Variations and Variation Options"""
+  translatedProductVariationTexts(productVariationId: ID!, productVariationOptionValue: String): [ProductVariationTexts!]!
+
+  """Returns total number languages"""
+  languagesCount(includeInactive: Boolean = false, queryString: String): Int!
+
+  """Get all languages, by default sorted by creation date (ascending)"""
+  languages(limit: Int = 50, offset: Int = 0, includeInactive: Boolean = false, queryString: String, sort: [SortOptionInput!]): [Language]!
+
+  """Get a specific language"""
+  language(languageId: ID!): Language
+
+  """Get all countries, by default sorted by creation date (ascending)"""
+  countries(limit: Int = 50, offset: Int = 0, includeInactive: Boolean = false, queryString: String, sort: [SortOptionInput!]): [Country!]!
+
+  """Returns total number of countries"""
+  countriesCount(includeInactive: Boolean = false, queryString: String): Int!
+
+  """Get a specific country by ID"""
+  country(countryId: ID!): Country
+
+  """Returns total number of currencies"""
+  currenciesCount(includeInactive: Boolean = false, queryString: String): Int!
+
+  """Get all currencies, by default sorted by creation date (ascending)"""
+  currencies(limit: Int = 50, offset: Int = 0, includeInactive: Boolean = false, queryString: String, sort: [SortOptionInput!]): [Currency!]!
+
+  """Get a specific currency by ID"""
+  currency(currencyId: ID!): Currency
+
+  """
+  Returns total number of delivery providers, optionally filtered by type
+  """
+  deliveryProvidersCount(type: DeliveryProviderType): Int!
+
+  """Get all delivery providers, optionally filtered by type"""
+  deliveryProviders(type: DeliveryProviderType): [DeliveryProvider!]!
+
+  """Get a specific delivery provider by ID"""
+  deliveryProvider(deliveryProviderId: ID!): DeliveryProvider
+
+  """Get all delivery interfaces filtered by type"""
+  deliveryInterfaces(type: DeliveryProviderType!): [DeliveryInterface!]!
+
+  """
+  Returns total number of delivery providers, optionally filtered by type
+  """
+  warehousingProvidersCount(type: WarehousingProviderType): Int!
+
+  """Get all warehousing providers, optionally filtered by type"""
+  warehousingProviders(type: WarehousingProviderType): [WarehousingProvider!]!
+
+  """Get a specific warehousing provider by ID"""
+  warehousingProvider(warehousingProviderId: ID!): WarehousingProvider
+
+  """Get all warehousing interfaces filtered by type"""
+  warehousingInterfaces(type: WarehousingProviderType!): [WarehousingInterface!]!
+
+  """Get token"""
+  token(tokenId: ID!): Token
+
+  """Get all tokens"""
+  tokens(queryString: String, limit: Int = 10, offset: Int = 0): [Token!]!
+
+  """Returns total tokens"""
+  tokensCount(queryString: String): Int!
+
+  """Returns total number of payment providers, optionally filtered by type"""
+  paymentProvidersCount(type: PaymentProviderType): Int!
+
+  """Get all payment providers, optionally filtered by type"""
+  paymentProviders(type: PaymentProviderType): [PaymentProvider!]!
+
+  """Get a specific payment provider by ID"""
+  paymentProvider(paymentProviderId: ID!): PaymentProvider
+
+  """Get all payment interfaces filtered by type"""
+  paymentInterfaces(type: PaymentProviderType!): [PaymentInterface!]!
+
+  """Returns total number of orders"""
+  ordersCount(includeCarts: Boolean = false, queryString: String): Int!
+
+  """Get all orders, by default sorted by creation date (descending)"""
+  orders(limit: Int = 10, offset: Int = 0, includeCarts: Boolean = false, queryString: String, status: [OrderStatus!], sort: [SortOptionInput!]): [Order!]!
+
+  """Get a specific single order"""
+  order(orderId: ID!): Order
+
+  """Get shop-global data and the resolved country/language pair"""
+  shopInfo: Shop!
+
+  """Get all root assortments, by default sorted by sequence (ascending)"""
+  assortments(queryString: String, tags: [LowerCaseString!], slugs: [String!], limit: Int = 10, offset: Int = 0, includeInactive: Boolean = false, includeLeaves: Boolean = false, sort: [SortOptionInput!]): [Assortment!]!
+
+  """
+  Returns total number of assortments that match a given criteria or all if no criteria is given
+  """
+  assortmentsCount(tags: [LowerCaseString!], slugs: [String!], includeInactive: Boolean = false, includeLeaves: Boolean = false, queryString: String): Int!
+
+  """Get a specific assortment by ID"""
+  assortment(assortmentId: ID, slug: String): Assortment
+
+  """Localization: Meta data for assortments"""
+  translatedAssortmentTexts(assortmentId: ID!): [AssortmentTexts!]!
+
+  """
+  Localization: Media title/subtitle of a media that is attached to a assortment
+  """
+  translatedAssortmentMediaTexts(assortmentMediaId: ID!): [AssortmentMediaTexts!]!
+
+  """Localization: Filters and Filter Options"""
+  translatedFilterTexts(filterId: ID!, filterOptionValue: String): [FilterTexts!]!
+
+  """Returns total number of filters"""
+  filtersCount(includeInactive: Boolean = false, queryString: String): Int!
+
+  """Get all filters, by default sorted by creation date (ascending)"""
+  filters(limit: Int = 10, offset: Int = 0, includeInactive: Boolean = false, queryString: String, sort: [SortOptionInput!]): [Filter!]!
+
+  """Get a specific filter by ID"""
+  filter(filterId: ID): Filter
+
+  """Returns total number of product reviews"""
+  productReviewsCount(queryString: String): Int!
+
+  """
+  Get all product reviews, by default sorted by creation date (descending)
+  """
+  productReviews(limit: Int = 10, offset: Int = 0, sort: [SortOptionInput!], queryString: String): [ProductReview!]!
+
+  """Get a specific product review by ID"""
+  productReview(productReviewId: ID!): ProductReview!
+
+  """Returns total number of quotations"""
+  quotationsCount(queryString: String): Int!
+
+  """Get all quotations, by default sorted by creation date (ascending)"""
+  quotations(limit: Int = 10, offset: Int = 0, queryString: String, sort: [SortOptionInput!]): [Quotation!]!
+
+  """Get a specific quotation by ID"""
+  quotation(quotationId: ID!): Quotation
+
+  """Returns total number of enrollments"""
+  enrollmentsCount(queryString: String, status: [String!]): Int!
+
+  """Get all enrollments, by default sorted by creation date (ascending)"""
+  enrollments(limit: Int = 10, offset: Int = 0, queryString: String, status: [String!], sort: [SortOptionInput!]): [Enrollment!]!
+
+  """Get a specific quotation by ID"""
+  enrollment(enrollmentId: ID!): Enrollment
+
+  """Search products"""
+  searchProducts(queryString: String, filterQuery: [FilterQueryInput!], assortmentId: ID, orderBy: SearchOrderBy, includeInactive: Boolean = false, ignoreChildAssortments: Boolean = false): ProductSearchResult!
+
+  """Search assortments"""
+  searchAssortments(queryString: String, assortmentIds: [ID!], orderBy: SearchOrderBy, includeInactive: Boolean = false): AssortmentSearchResult!
+
+  """
+  Get all work from the queue, by default sorted by start date (desc), priority (desc), originalWorkId (asc) and created (asc)
+  """
+  workQueue(limit: Int = 10, offset: Int = 0, status: [WorkStatus!], created: DateFilterInput, queryString: String, sort: [SortOptionInput!], types: [WorkType!]): [Work!]!
+
+  """Return total number of workers filtered the provided arguments"""
+  workQueueCount(status: [WorkStatus!], types: [WorkType!], created: DateFilterInput, queryString: String): Int!
+
+  """Get a specific work unit by ID"""
+  work(workId: ID!): Work
+
+  """Get List of currently registered worker plugins"""
+  activeWorkTypes: [WorkType!]!
+
+  """Get a specific work unit by ID"""
+  event(eventId: ID!): Event
+
+  """Get all emitted events, by default sorted by creation date (desc)"""
+  events(types: [String!], limit: Int = 10, offset: Int = 0, queryString: String, created: DateTimeISO, sort: [SortOptionInput!]): [Event!]!
+
+  """Get total count of all emitted events"""
+  eventsCount(types: [String!], queryString: String, created: DateTimeISO): Int!
+
+  """Determines if a token is valid/active for reset password"""
+  validateResetPasswordToken(token: String!): Boolean!
+
+  """Determines if a token is valid/active for email verification"""
+  validateVerifyEmailToken(token: String!): Boolean!
+
+  """
+  Returns aggregated report of all the events that occurred in the system
+  """
+  eventStatistics(types: [String!], dateRange: DateFilterInput): [EventStatistics!]!
+
+  """
+  Returns aggregated report of all the orders that occurred in the system
+  """
+  orderStatistics(dateRange: DateFilterInput): OrderStatistics!
+
+  """
+  Returns aggregated report of all the worker jobs that occurred in the system
+  """
+  workStatistics(types: [String!], dateRange: DateFilterInput): [WorkStatistics!]!
+}
+
+type Mutation {
+  pageView(path: String!, referrer: String): String!
+
+  """Log the user in with a password."""
+  loginWithPassword(username: String, email: String, password: String!): LoginMethodResponse
+
+  """Log the user in with a WebAuthn device"""
+  loginWithWebAuthn(webAuthnPublicKeyCredentials: JSON!): LoginMethodResponse
+
+  """Web3"""
+  addWeb3Address(address: String!): User!
+  verifyWeb3Address(address: String!, hash: String!): User!
+  removeWeb3Address(address: String!): User!
+
+  """Create a new user."""
+  createUser(username: String, email: String, webAuthnPublicKeyCredentials: JSON, password: String, profile: UserProfileInput): LoginMethodResponse
+
+  """
+  Update hearbeat (updates user activity information such as last
+  login and logged in user IP address, locale and country where they
+  accessed the system)
+  """
+  heartbeat: User!
+
+  """Change the current user's password. Must be logged in."""
+  changePassword(oldPassword: String, newPassword: String): SuccessResponse
+
+  """Request a forgot password email."""
+  forgotPassword(email: String!): SuccessResponse
+
+  """
+  Reset the password for a user using a token received in email. Logs the user in afterwards.
+  """
+  resetPassword(newPassword: String, token: String!): LoginMethodResponse
+
+  """Log the user out."""
+  logout: SuccessResponse
+
+  """Impersonate a user"""
+  impersonate(userId: ID!): LoginMethodResponse!
+
+  """
+  End customer impersonated user session and resume the impersonator session
+  """
+  stopImpersonation: LoginMethodResponse
+
+  """
+  Marks the user's email address as verified. Logs the user in afterwards.
+  """
+  verifyEmail(token: String!): LoginMethodResponse
+
+  """Send an email with a link the user can use verify their email address."""
+  sendVerificationEmail(email: String): SuccessResponse
+
+  """
+  Login as Guest User (creates an anonymous user and returns logged in token)
+  """
+  loginAsGuest: LoginMethodResponse
+
+  """
+  Create WebAuthn PublicKeyCredentialCreationOptions to use for Registering a new WebAuthn Device
+  """
+  createWebAuthnCredentialCreationOptions(username: String!, extensionOptions: JSON): JSON
+
+  """Register WebAuthn Credentials for current user"""
+  addWebAuthnCredentials(credentials: JSON!): User!
+
+  """Remove WebAuthn Credentials for current user"""
+  removeWebAuthnCredentials(credentialsId: ID!): User!
+
+  """
+  Create WebAuthn PublicKeyCredentialRequestrOptions to use for WebAuthn Login Flow
+  """
+  createWebAuthnCredentialRequestOptions(username: String, extensionOptions: JSON): JSON
+
+  """
+  Creates an alternative cart. If you use this feature, you should use explicit orderId's when using the
+  cart mutations. Else it will work like a stack and the checkout will use the very first cart of the user.
+  """
+  createCart(orderNumber: String!): Order!
+
+  """
+  Add a new item to the cart. Order gets generated with status = open (= order before checkout / cart) if necessary.
+  """
+  addCartProduct(orderId: ID, productId: ID!, quantity: Int = 1, configuration: [ProductConfigurationParameterInput!]): OrderItem!
+
+  """
+  Add multiple new item to the cart. Order gets generated with status = open (= order before checkout / cart) if necessary.
+  """
+  addMultipleCartProducts(orderId: ID, items: [OrderItemInput!]!): Order!
+
+  """
+  Add a new discount to the cart, a new order gets generated with status = open (= order before checkout / cart) if necessary
+  """
+  addCartDiscount(orderId: ID, code: String!): OrderDiscount!
+
+  """Add a new quotation to the cart."""
+  addCartQuotation(orderId: ID, quotationId: ID!, quantity: Int = 1, configuration: [ProductConfigurationParameterInput!]): OrderItem!
+
+  """
+  Change billing address and order contact of an open order (cart). All of the parameters
+  except order ID are optional and the update will ocure for parameters provided.
+  If the delivery provider or payment provider ID provided doesn’t already exist new order payment
+  will be created with the provided ID.
+  """
+  updateCart(orderId: ID, billingAddress: AddressInput, contact: ContactInput, meta: JSON, paymentProviderId: ID, deliveryProviderId: ID): Order!
+
+  """
+  Remove all items of an open order (cart) if possible.
+  if you want to remove single cart item use removeCartItem instead
+  """
+  emptyCart(orderId: ID): Order
+
+  """
+  Process the checkout (automatically charge & deliver if possible), the cart will get
+  transformed to an ordinary order if everything goes well.
+  """
+  checkoutCart(orderId: ID, paymentContext: JSON, deliveryContext: JSON): Order!
+
+  """
+  Change the quantity or configuration of an item in an open order.align-baselineAll
+  of the parameters are optional except item ID and for the parameters provided the
+  update will be performed accordingly.
+  """
+  updateCartItem(itemId: ID!, quantity: Int, configuration: [ProductConfigurationParameterInput!]): OrderItem!
+
+  """Remove an item from an open order"""
+  removeCartItem(itemId: ID!): OrderItem!
+
+  """Remove a discount from the cart"""
+  removeCartDiscount(discountId: ID!): OrderDiscount!
+
+  """Create a enrollment."""
+  createEnrollment(plan: EnrollmentPlanInput!, billingAddress: AddressInput, contact: ContactInput, payment: EnrollmentPaymentInput, delivery: EnrollmentDeliveryInput, meta: JSON): Enrollment!
+
+  """Update a enrollment"""
+  updateEnrollment(enrollmentId: ID, plan: EnrollmentPlanInput, billingAddress: AddressInput, contact: ContactInput, payment: EnrollmentPaymentInput, delivery: EnrollmentDeliveryInput, meta: JSON): Enrollment!
+
+  """Activate a enrollment by changing the status to ACTIVE"""
+  activateEnrollment(enrollmentId: ID!): Enrollment!
+
+  """
+  Terminate an actively running enrollment by changing it's status to TERMINATED
+  """
+  terminateEnrollment(enrollmentId: ID!): Enrollment!
+
+  """
+  Change the delivery method/provider to an order. If the delivery provider
+  doesn’t exists new delivery provider will be created with the provided ID.
+  """
+  setOrderDeliveryProvider(orderId: ID!, deliveryProviderId: ID!): Order!
+
+  """
+  Change the payment method/provider to an order. If the payment provider
+  doesn’t exists new payment provider will be created with the provided ID.
+  """
+  setOrderPaymentProvider(orderId: ID!, paymentProviderId: ID!): Order!
+
+  """Update a Shipping Delivery Provider's specific configuration"""
+  updateOrderDeliveryShipping(orderDeliveryId: ID!, address: AddressInput, meta: JSON): OrderDeliveryShipping!
+
+  """Update a Pick Up Delivery Provider's specific configuration"""
+  updateOrderDeliveryPickUp(orderDeliveryId: ID!, orderPickUpLocationId: ID!, meta: JSON): OrderDeliveryPickUp!
+
+  """Update a Card Payment Provider's specific configuration"""
+  updateOrderPaymentCard(orderPaymentId: ID!, meta: JSON): OrderPaymentCard!
+
+  """Update an Invoice Payment Provider's specific configuration"""
+  updateOrderPaymentInvoice(orderPaymentId: ID!, meta: JSON): OrderPaymentInvoice!
+
+  """Update a Generic Payment Provider's specific configuration"""
+  updateOrderPaymentGeneric(orderPaymentId: ID!, meta: JSON): OrderPaymentGeneric!
+
+  """Remove an order while it's still open"""
+  removeOrder(orderId: ID!): Order!
+
+  """Manually confirm an order which is in progress"""
+  confirmOrder(orderId: ID!, paymentContext: JSON, deliveryContext: JSON, comment: String): Order!
+
+  """Manually reject an order which is in progress"""
+  rejectOrder(orderId: ID!, paymentContext: JSON, deliveryContext: JSON, comment: String): Order!
+
+  """Manually mark an unpaid/partially paid order as fully paid"""
+  payOrder(orderId: ID!): Order!
+
+  """Manually mark a undelivered order as delivered"""
+  deliverOrder(orderId: ID!): Order!
+
+  """
+  Update E-Mail address of any user or logged in user if userId is not provided
+  """
+  addEmail(email: String!, userId: ID): User!
+
+  """
+  Update E-Mail address of any user or logged in user if userId is not provided
+  """
+  removeEmail(email: String!, userId: ID): User!
+
+  """Set tags of user"""
+  setUserTags(tags: [LowerCaseString]!, userId: ID!): User!
+
+  """Update Profile of any user or logged in user if userId is not provided"""
+  updateUserProfile(profile: UserProfileInput, meta: JSON, userId: ID): User!
+
+  """Remove any user or logged in user if userId is not provided"""
+  removeUser(userId: ID, removeUserReviews: Boolean): User!
+
+  """Remove product reviews of a user"""
+  removeUserProductReviews(userId: ID!): Boolean!
+
+  """
+  Enroll a new user, setting enroll to true will let the user choose his password (e-mail gets sent)
+  """
+  enrollUser(profile: UserProfileInput!, email: String!, password: String): User!
+
+  """
+  Forcefully trigger an enrollment email for already added users by e-mail
+  """
+  sendEnrollmentEmail(email: String!): SuccessResponse
+
+  """Set username for a specific user"""
+  setUsername(username: String!, userId: ID!): User!
+
+  """Set a new password for a specific user"""
+  setPassword(newPassword: String, userId: ID!): User!
+
+  """Set roles of a user"""
+  setRoles(roles: [String!]!, userId: ID!): User!
+
+  """Create a new product"""
+  createProduct(product: CreateProductInput!, texts: [ProductTextInput!]): Product!
+
+  """Make the product visible on any shop listings (product queries)"""
+  publishProduct(productId: ID!): Product!
+
+  """Hide the product visible from any shop listings (product queries)"""
+  unpublishProduct(productId: ID!): Product!
+
+  """Remove the product completely!"""
+  removeProduct(productId: ID!): Product!
+
+  """Modify generic infos of a product (tags for ex.)"""
+  updateProduct(productId: ID!, product: UpdateProductInput!): Product
+
+  """Modify commerce part of a product"""
+  updateProductCommerce(productId: ID!, commerce: UpdateProductCommerceInput!): Product
+
+  """Modify delivery part of a product"""
+  updateProductSupply(productId: ID!, supply: UpdateProductSupplyInput!): Product
+
+  """Modify plan part of a product"""
+  updateProductPlan(productId: ID!, plan: UpdateProductPlanInput!): Product
+
+  """Modify tokenization part of a product"""
+  updateProductTokenization(productId: ID!, tokenization: UpdateProductTokenizationInput!): TokenizedProduct
+
+  """Modify warehousing part of a product"""
+  updateProductWarehousing(productId: ID!, warehousing: UpdateProductWarehousingInput!): Product
+
+  """Modify localized texts part of a product"""
+  updateProductTexts(productId: ID!, texts: [ProductTextInput!]!): [ProductTexts!]!
+
+  """Remove a media asset from a product's visualization"""
+  removeProductMedia(productMediaId: ID!): ProductMedia!
+
+  """Reorder a media asset (first is primary)"""
+  reorderProductMedia(sortKeys: [ReorderProductMediaInput!]!): [ProductMedia!]!
+
+  """Modify localized texts part of a product's media asset"""
+  updateProductMediaTexts(productMediaId: ID!, texts: [ProductMediaTextInput!]!): [ProductMediaTexts!]!
+
+  """Removes product variation with the provided ID"""
+  removeProductVariation(productVariationId: ID!): ProductVariation!
+
+  """
+  Removes product option value for product variation with the provided variation option value
+  """
+  removeProductVariationOption(productVariationId: ID!, productVariationOptionValue: String!): ProductVariation!
+
+  """
+  Update product variation texts with the specified locales for product variations
+  that match the provided variation ID and production option value
+  """
+  updateProductVariationTexts(productVariationId: ID!, productVariationOptionValue: String, texts: [ProductVariationTextInput!]!): [ProductVariationTexts!]!
+
+  """Creates new product variation for a product."""
+  createProductVariation(productId: ID!, variation: CreateProductVariationInput!, texts: [ProductVariationTextInput!]): ProductVariation!
+
+  """Adds one product as bundle for another products"""
+  createProductBundleItem(productId: ID!, item: CreateProductBundleItemInput!): Product!
+
+  """Removes products bundle item found at the given 0 based index."""
+  removeBundleItem(productId: ID!, index: Int!): Product!
+
+  """Adds variation option to an existing product variations"""
+  createProductVariationOption(productVariationId: ID!, option: String!, texts: [ProductVariationTextInput!]): ProductVariation!
+
+  """
+  Link a new product to a ConfigurableProduct by providing a configuration
+  combination that uniquely identifies a row in the assignment matrix
+  """
+  addProductAssignment(proxyId: ID!, productId: ID!, vectors: [ProductAssignmentVectorInput!]!): Product!
+
+  """
+  Unlinks a product from a ConfigurableProduct by providing a configuration
+  combination that uniquely identifies a row in the assignment matrix
+  """
+  removeProductAssignment(proxyId: ID!, vectors: [ProductAssignmentVectorInput!]!): Product!
+
+  """Adds new language along with the user who created it"""
+  createLanguage(language: CreateLanguageInput!): Language!
+
+  """Updates the specified language."""
+  updateLanguage(language: UpdateLanguageInput!, languageId: ID!): Language!
+
+  """Deletes the specified languages"""
+  removeLanguage(languageId: ID!): Language!
+  createCountry(country: CreateCountryInput!): Country!
+
+  """Updates provided country information"""
+  updateCountry(country: UpdateCountryInput!, countryId: ID!): Country!
+
+  """Deletes the specified country"""
+  removeCountry(countryId: ID!): Country!
+  createCurrency(currency: CreateCurrencyInput!): Currency!
+
+  """Updates the specified currency"""
+  updateCurrency(currency: UpdateCurrencyInput!, currencyId: ID!): Currency!
+
+  """Deletes the specified currency"""
+  removeCurrency(currencyId: ID!): Currency!
+
+  """Adds new payment provider"""
+  createPaymentProvider(paymentProvider: CreatePaymentProviderInput!): PaymentProvider!
+
+  """Updates payment provider information with the provided ID"""
+  updatePaymentProvider(paymentProvider: UpdateProviderInput!, paymentProviderId: ID!): PaymentProvider!
+
+  """
+  Deletes the specified payment provider by setting the deleted filed to current timestamp.
+  Note the payment provider is still available only it’s status is deleted
+  """
+  removePaymentProvider(paymentProviderId: ID!): PaymentProvider!
+
+  """Creates new delivery provider"""
+  createDeliveryProvider(deliveryProvider: CreateDeliveryProviderInput!): DeliveryProvider!
+
+  """Updates the delivery provider specified"""
+  updateDeliveryProvider(deliveryProvider: UpdateProviderInput!, deliveryProviderId: ID!): DeliveryProvider!
+
+  """
+  Deletes a delivery provider by setting the deleted field to current timestamp.
+  Note the delivery provider still exists.
+  """
+  removeDeliveryProvider(deliveryProviderId: ID!): DeliveryProvider!
+
+  """Creates new warehouse provider."""
+  createWarehousingProvider(warehousingProvider: CreateWarehousingProviderInput!): WarehousingProvider!
+
+  """Updates warehousing provider information with the provided ID"""
+  updateWarehousingProvider(warehousingProvider: UpdateProviderInput!, warehousingProviderId: ID!): WarehousingProvider!
+
+  """
+  Deletes the specified warehousing provider by setting the deleted filed to current timestamp.
+  Note warehousing provider still exists in the system after successful
+  completing of this operation with status deleted.
+  """
+  removeWarehousingProvider(warehousingProviderId: ID!): WarehousingProvider!
+
+  """Creates new assortment."""
+  createAssortment(assortment: CreateAssortmentInput!, texts: [AssortmentTextInput!]): Assortment!
+
+  """Updates the provided assortment"""
+  updateAssortment(assortment: UpdateAssortmentInput!, assortmentId: ID!): Assortment!
+
+  """
+  Makes the assortment provided as the base assortment and make
+  any other existing base assortment regular assortments.
+  """
+  setBaseAssortment(assortmentId: ID!): Assortment!
+
+  """Removes assortment with the provided ID"""
+  removeAssortment(assortmentId: ID!): Assortment!
+
+  """Modify localized texts part of an assortment"""
+  updateAssortmentTexts(assortmentId: ID!, texts: [AssortmentTextInput!]!): [AssortmentTexts!]!
+
+  """Add a new product to an assortment"""
+  addAssortmentProduct(assortmentId: ID!, productId: ID!, tags: [LowerCaseString!]): AssortmentProduct!
+
+  """Remove a product from an assortment"""
+  removeAssortmentProduct(assortmentProductId: ID!): AssortmentProduct!
+
+  """Reorder the products in an assortment"""
+  reorderAssortmentProducts(sortKeys: [ReorderAssortmentProductInput!]!): [AssortmentProduct!]!
+
+  """Add a new child assortment to an assortment"""
+  addAssortmentLink(parentAssortmentId: ID!, childAssortmentId: ID!, tags: [LowerCaseString!]): AssortmentLink!
+
+  """Remove a child/parent assortment link from it's parent"""
+  removeAssortmentLink(assortmentLinkId: ID!): AssortmentLink!
+
+  """Reorder the child assortment links in it's parent"""
+  reorderAssortmentLinks(sortKeys: [ReorderAssortmentLinkInput!]!): [AssortmentLink!]!
+
+  """Add a new filter to an assortment"""
+  addAssortmentFilter(assortmentId: ID!, filterId: ID!, tags: [LowerCaseString!]): AssortmentFilter!
+
+  """Remove a product from an assortment"""
+  removeAssortmentFilter(assortmentFilterId: ID!): AssortmentFilter!
+
+  """Reorder the products in an assortment"""
+  reorderAssortmentFilters(sortKeys: [ReorderAssortmentFilterInput!]!): [AssortmentFilter!]!
+
+  """Remove a media asset from a assortment"""
+  removeAssortmentMedia(assortmentMediaId: ID!): AssortmentMedia!
+
+  """Reorder a media asset (first is primary)"""
+  reorderAssortmentMedia(sortKeys: [ReorderAssortmentMediaInput!]!): [AssortmentMedia!]!
+
+  """Modify localized texts part of a assortment media asset"""
+  updateAssortmentMediaTexts(assortmentMediaId: ID!, texts: [AssortmentMediaTextInput!]!): [AssortmentMediaTexts!]!
+
+  """Creates new Filter along with the user who created it."""
+  createFilter(filter: CreateFilterInput!, texts: [FilterTextInput!]): Filter!
+
+  """Updates the specified filter with the information passed."""
+  updateFilter(filter: UpdateFilterInput!, filterId: ID!): Filter!
+
+  """Deletes the specified filter"""
+  removeFilter(filterId: ID!): Filter!
+
+  """Removes the filter option from the specified filter."""
+  removeFilterOption(filterId: ID!, filterOptionValue: String!): Filter!
+
+  """
+  Updates or created specified filter texts for filter with ID provided and locale and optionally filterOptionValue
+  """
+  updateFilterTexts(filterId: ID!, filterOptionValue: String, texts: [FilterTextInput!]!): [FilterTexts!]!
+
+  """Adds new option to filters"""
+  createFilterOption(filterId: ID!, option: String!, texts: [FilterTextInput!]): Filter!
+
+  """Add a new ProductReview"""
+  createProductReview(productId: ID!, productReview: ProductReviewInput!): ProductReview!
+
+  """
+  Update an existing ProductReview. The logic to allow/dissallow editing is controlled by product plugin logic
+  """
+  updateProductReview(productReviewId: ID!, productReview: ProductReviewInput!): ProductReview!
+
+  """
+  Remove an existing ProductReview. The logic to allow/dissallow removal is controlled by product plugin logic
+  """
+  removeProductReview(productReviewId: ID!): ProductReview!
+
+  """
+  Add a vote to a ProductReview.
+  If there there is a previous vote from the user invoking this it will be removed and updated with the new vote
+  """
+  addProductReviewVote(productReviewId: ID!, type: ProductReviewVoteType!, meta: JSON): ProductReview!
+
+  """Remove a vote from a ProductReview"""
+  removeProductReviewVote(productReviewId: ID!, type: ProductReviewVoteType): ProductReview!
+
+  """Request for Proposal (RFP) for the specified product"""
+  requestQuotation(productId: ID!, configuration: [ProductConfigurationParameterInput!]): Quotation!
+
+  """
+  Verify quotation request elligibility. and marks requested quotations as verified if it is
+  """
+  verifyQuotation(quotationId: ID!, quotationContext: JSON): Quotation!
+
+  """
+  Reject an RFP, this is possible as long as a quotation is not fullfilled
+  """
+  rejectQuotation(quotationId: ID!, quotationContext: JSON): Quotation!
+
+  """
+  Make a proposal as answer to the RFP by changing its status to PROCESSED
+  """
+  makeQuotationProposal(quotationId: ID!, quotationContext: JSON): Quotation!
+
+  """
+  Toggle Bookmark state on a product as currently logged in user,
+  Does not work when multiple bookmarks with different explicit meta configurations exist.
+  In those cases please use createBookmark and removeBookmark
+  """
+  bookmark(productId: ID!, bookmarked: Boolean = true): Bookmark!
+
+  """Create a bookmark for a specific user"""
+  createBookmark(productId: ID!, userId: ID!, meta: JSON): Bookmark!
+
+  """Remove an existing bookmark by ID"""
+  removeBookmark(bookmarkId: ID!): Bookmark!
+
+  """
+  Add work to the work queue. Each type has its own input shape. If you pinpoint the worker by setting it
+  during creation, the work will be only run by the worker who identifies as that worker.
+  """
+  addWork(type: WorkType!, priority: Int! = 0, input: JSON, originalWorkId: ID, scheduled: Timestamp, retries: Int! = 20, worker: String): Work
+
+  """
+  Get the next task from the worker queue. This will also mark the task as "started".
+  Optional worker to identify the worker.
+  """
+  allocateWork(types: [WorkType], worker: String): Work
+
+  """
+  This will pick up non-external work, execute, await result and finish
+  it up on the target system. This function allows you to do work queue "ticks"
+  from outside instead of waiting for default Cron and Event Listener to trigger
+  and can be helpful in serverless environments.
+  """
+  processNextWork(worker: String): Work
+
+  """
+  Register a work attempt manually.
+  Note: Usually, work attempts are handled internally by the inbuilt cron
+  worker. This mutation is part of the interface for "outside" workers.
+  """
+  finishWork(workId: ID!, result: JSON, error: JSON, success: Boolean, worker: String, started: Timestamp, finished: Timestamp): Work!
+
+  """Manually remove a work"""
+  removeWork(workId: ID!): Work!
+
+  """
+  Register credentials for an existing payment provider allowing to store and use them
+  for later payments (1-click checkout or enrollments)
+  """
+  registerPaymentCredentials(transactionContext: JSON!, paymentProviderId: ID!): PaymentCredentials
+
+  """
+  Make's the provided payment credential as the users preferred method of payment.
+  """
+  markPaymentCredentialsPreferred(paymentCredentialsId: ID!): PaymentCredentials
+
+  """Deletes the specified payment credential."""
+  removePaymentCredentials(paymentCredentialsId: ID!): PaymentCredentials
+
+  """Sign a generic payment provider for registration"""
+  signPaymentProviderForCredentialRegistration(paymentProviderId: ID!, transactionContext: JSON): String
+
+  """Sign a generic order payment"""
+  signPaymentProviderForCheckout(orderPaymentId: ID, transactionContext: JSON): String!
+  prepareProductMediaUpload(mediaName: String!, productId: ID!): MediaUploadTicket!
+  prepareAssortmentMediaUpload(mediaName: String!, assortmentId: ID!): MediaUploadTicket!
+  prepareUserAvatarUpload(mediaName: String!, userId: ID): MediaUploadTicket!
+  confirmMediaUpload(mediaUploadTicketId: ID!, size: Int!, type: String!): Media!
+
+  """Tokenize"""
+  invalidateToken(tokenId: ID!): Token!
+  exportToken(tokenId: ID!, quantity: Int! = 1, recipientWalletAddress: String!): Token!
+
+  """Store user W3C Push subscription object"""
+  addPushSubscription(subscription: JSON!, unsubscribeFromOtherUsers: Boolean): User!
+
+  """Remove user W3C push subscription object"""
+  removePushSubscription(p256dh: String!): User!
+}
