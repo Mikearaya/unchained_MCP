@@ -1,41 +1,69 @@
+import fs from 'fs';
+import readline from 'readline';
 import { Ollama } from '@langchain/community/llms/ollama';
+import { PromptTemplate } from '@langchain/core/prompts';
+
+import { BufferMemory } from 'langchain/memory';
 import { HNSWLib } from '@langchain/community/vectorstores/hnswlib';
 import { OllamaEmbeddings } from '@langchain/community/embeddings/ollama';
-import readline from 'readline';
-
-const embeddings = new OllamaEmbeddings({ model: 'nomic-embed-text' });
-const vectorStore = await HNSWLib.load('./vectorstore', embeddings); // Load saved store
-
-const llm = new Ollama({ model: 'phi4-mini' });
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const ask = (q) => new Promise(resolve => rl.question(q, resolve));
 
-function ask(query) {
-  return new Promise(resolve => rl.question(query, resolve));
-}
+const vectorStore = await HNSWLib.load('./vectorstore', new OllamaEmbeddings({ model: 'nomic-embed-text' }));
 
-async function run() {
-  while (true) {
-    const prompt = await ask("You> ");
-    if (prompt === 'exit') break;
+const llm = new Ollama({ model: 'phi4-mini' });
+const memory = new BufferMemory();
 
-    const results = await vectorStore.similaritySearch(prompt, 10);
-    const context = results.map(doc => doc.pageContent).join('\n');
+const template = `
+You are a GraphQL expert helping the user write valid queries/mutations. and answer questions about it.
 
-    const finalPrompt = `
-You are a GraphQL expert.
-Use the following schema to answer questions or generate GraphQL queries.
+Conversation so far:
+{history}
 
-Schema context:
-${context}
+Relevant schema context:
+{context}
 
-User request: ${prompt}
+User request:
+{input}
 
-Reply only with a valid GraphQL query or explanation based on the schema provided only.
+Reply with a valid GraphQL query or mutation based on the schema and context above.
+RESPONSE FORMAT:
+- GraphQL Query/Mutation
+- Type Definition
+- Comments if needed
+- NO guesses or assumptions
+- example, with mandatory fields filled
 `;
 
-    const gqlQuery = await llm.invoke(finalPrompt);
-    console.log("\nGenerated:\n", gqlQuery);
+const prompt = new PromptTemplate({
+  template,
+  inputVariables: ['history', 'context', 'input'],
+});
+
+// 4. Interactive loop
+async function run() {
+  while (true) {
+    const userInput = await ask('You> ');
+    if (userInput.toLowerCase() === 'exit') break;
+
+    const relatedDocs = await vectorStore.similaritySearch(userInput, 20);
+    const context = relatedDocs.map(d => d.pageContent).join('\n');
+    if (context === '') {
+        console.log("I couldn't find relevant schema context. Please refine your question.")
+        return ;
+      }
+
+    const history = await memory.loadMemoryVariables({});
+    const finalPrompt = await prompt.format({
+      history: history.chat_history ?? '',
+      context,
+      input: userInput,
+    });
+    const response = await llm.invoke(finalPrompt);
+    console.log("\nGraphQL Assistant>\n", response.trim());
+
+    await memory.saveContext({ input: userInput }, { output: response });
   }
 
   rl.close();

@@ -6,12 +6,13 @@ console.log('Step 1: Load schema')
 
 const schema = fs.readFileSync('./schema.graphql', 'utf8');
 console.log('Step 2: Chunk schema')
-const splitter = new RecursiveCharacterTextSplitter({   chunkSize: 800,
-    chunkOverlap: 200, });
+const splitter = new RecursiveCharacterTextSplitter({   chunkSize: 1024,
+    chunkOverlap: 100 });
 const docs = await splitter.createDocuments([schema]);
 console.log('Step 3: Embed with Ollama')
 const embeddings = new OllamaEmbeddings({ model: 'nomic-embed-text' });
 
 const vectorStore = await HNSWLib.fromDocuments(docs, embeddings);
 console.log('Step 4: Save vectors to disk')
-await vectorStore.save('./vectorstore'); // Will create a folder with saved index
+await vectorStore.save('./vectorstore'); 
+
