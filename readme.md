@@ -19,7 +19,12 @@ node embed-and-save.js
 ```
 
 run app
-
+For Q & A
 ```
 node interactive-agent.js
+```
+
+For Making request to backend
+```
+node run-assistant.js
 ```
