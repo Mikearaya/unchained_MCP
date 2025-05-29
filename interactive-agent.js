@@ -1,4 +1,3 @@
-import fs from 'fs';
 import readline from 'readline';
 import { Ollama } from '@langchain/community/llms/ollama';
 import { PromptTemplate } from '@langchain/core/prompts';
@@ -17,6 +16,11 @@ const memory = new BufferMemory();
 
 const template = `
 You are a GraphQL expert helping the user write valid queries/mutations. and answer questions about it.
+
+STRICT RULES:
+- Only use fields and types explicitly found in the context.
+- Do NOT guess or invent anything.
+- If unsure, say "I need more information".
 
 Conversation so far:
 {history}
@@ -41,7 +45,6 @@ const prompt = new PromptTemplate({
   inputVariables: ['history', 'context', 'input'],
 });
 
-// 4. Interactive loop
 async function run() {
   while (true) {
     const userInput = await ask('You> ');
@@ -61,7 +64,7 @@ async function run() {
       input: userInput,
     });
     const response = await llm.invoke(finalPrompt);
-    console.log("\nGraphQL Assistant>\n", response.trim());
+    console.log("\Assistant>\n", response.trim());
 
     await memory.saveContext({ input: userInput }, { output: response });
   }
